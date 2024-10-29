@@ -13,7 +13,7 @@ use ore_api::state::Proof;
 use solana_sdk::pubkey::Pubkey;
 use tokio::sync::{Mutex, RwLock};
 
-use crate::{message::ServerMessageStartMining, ore_utils::get_cutoff, AppState, EpochHashes, SubmissionWindow};
+use crate::{message::ServerMessageStartMining, ore_utils::get_cutoff, AppState, EpochHashes, SubmissionWindow, BUFFER_CLIENT, NONCE_RANGE};
 
 pub async fn handle_ready_clients_system(
     app_state: Arc<RwLock<AppState>>,
@@ -45,7 +45,7 @@ pub async fn handle_ready_clients_system(
                 let latest_proof = lock.clone();
                 drop(lock);
 
-                let cutoff = get_cutoff(latest_proof, 4);
+                let cutoff = get_cutoff(latest_proof, BUFFER_CLIENT);
                 let mut should_mine = true;
 
                 // only distribute challenge if 10 seconds or more is left
@@ -82,11 +82,11 @@ pub async fn handle_ready_clients_system(
                             let nonce_range = {
                                 let mut nonce = app_nonce.lock().await;
                                 let start = *nonce;
-                                *nonce += 4_000_000;
+                                *nonce += NONCE_RANGE;
                                 drop(nonce);
                                 // max hashes possible in 60s for a single client
                                 //
-                                let nonce_end = start + 3_999_999;
+                                let nonce_end = start + NONCE_RANGE - 1;
                                 let end = nonce_end;
                                 start..end
                             };

@@ -34,11 +34,9 @@ use tokio::{
 };
 use tracing::info;
 
-use crate::{
-    app_database::AppDatabase, ore_utils::{
-        get_auth_ix, get_cutoff, get_mine_ix_with_boosts, get_proof, get_proof_and_config_with_busses, get_reset_ix, MineEventWithBoosts, ORE_TOKEN_DECIMALS
-    }, Config, EpochHashes, InsertChallenge, InsertEarning, InsertTxn, MessageInternalAllClients, MessageInternalMineSuccess, SubmissionWindow, UpdateReward, WalletExtension
-};
+use crate::{app_database::AppDatabase, ore_utils::{
+    get_auth_ix, get_cutoff, get_mine_ix_with_boosts, get_proof, get_proof_and_config_with_busses, get_reset_ix, MineEventWithBoosts, ORE_TOKEN_DECIMALS
+}, Config, EpochHashes, InsertChallenge, InsertEarning, InsertTxn, MessageInternalAllClients, MessageInternalMineSuccess, SubmissionWindow, UpdateReward, WalletExtension, BUFFER_SERVER};
 
 
 
@@ -64,7 +62,7 @@ pub async fn pool_submission_system(
         let old_proof = lock.clone();
         drop(lock);
 
-        let cutoff = get_cutoff(old_proof, 3);
+        let cutoff = get_cutoff(old_proof, BUFFER_SERVER);
         if cutoff <= 0 {
             // process solutions
             let reader = app_epoch_hashes.read().await;
@@ -79,7 +77,7 @@ pub async fn pool_submission_system(
 
                 let signer = app_wallet.clone().miner_wallet.clone();
 
-                let bus = rand::thread_rng().gen_range(0..BUS_COUNT);
+                let mut bus = rand::thread_rng().gen_range(0..BUS_COUNT);
 
                 let mut success = false;
                 let reader = app_epoch_hashes.read().await;
@@ -103,8 +101,53 @@ pub async fn pool_submission_system(
                             get_proof_and_config_with_busses(&rpc_client, signer.pubkey()).await
                         {
                             loaded_config = Some(config);
+                            let adjusted_top_balance = config.top_balance as f64 * 0.00000000001;
+                            info!(target: "server_log", "Config Info:: base_reward_rate:{}, last_reset_at:{}, min_difficulty:{}, top_balance:{}, top_balance:{} Ore.",
+                                config.base_reward_rate, config.last_reset_at, config.min_difficulty, config.top_balance, adjusted_top_balance);
 
+                            info!(target: "server_log", "Proof Info:: {:?}", p);
                             info!(target: "server_log", "Latest Challenge: {}", BASE64_STANDARD.encode(p.challenge));
+
+                            let mut max_rewards: Option<u64> = None;
+                            let mut max_rewards_id: Option<u64> = None;
+                            let mut max_top_balance: Option<u64> = None;
+                            for bus_item in _busses {
+                                match bus_item {
+                                    Ok(bus_data) => {
+                                        info!(target: "server_log", "Bus Info:: {:?}", bus_data);
+                                        if max_rewards.is_none() || bus_data.rewards > max_rewards.unwrap() {
+                                            max_rewards = Some(bus_data.rewards);
+                                            max_rewards_id = Some(bus_data.id);
+                                        }
+                                        if max_top_balance.is_none() || bus_data.top_balance > max_top_balance.unwrap() {
+                                            max_top_balance = Some(bus_data.top_balance);
+                                        }
+                                    },
+                                    Err(_) => {
+                                        info!(target: "server_log", "Parse bus info error!");
+                                    }
+                                }
+                            }
+                            if let (Some(max_rewards_value), Some(max_rewards_id_value)) = (max_rewards, max_rewards_id) {
+                                let adjusted_max_rewards_value = max_rewards.unwrap_or(0) as f64 * 0.00000000001;
+                                if let Some(id) = max_rewards_id {
+                                    if id <= usize::MAX as u64 {
+                                        bus = id as usize;
+                                        info!(target: "server_log", "Max rewards of bus's id:{}, max rewards:{}, max rewards:{} Ore.",
+                                            max_rewards_id_value, max_rewards_value, adjusted_max_rewards_value);
+                                    } else {
+                                        info!("The x_rewards_id exceeds the maximum value of usize.");
+                                    }
+                                }
+                            } else {
+                                info!(target: "server_log", "Have not find any bus info.");
+                            }
+                            if let Some(max_top_balance_value) = max_top_balance {
+                                let adjusted_max_top_balance = max_top_balance_value as f64 * 0.00000000001;
+                                info!(target: "server_log", "Max stake value of bus:{}, max stake:{} Ore.", max_top_balance_value, adjusted_max_top_balance);
+                            } else {
+                                info!(target: "server_log", "Have not find any stake info.");
+                            }
 
                             if !best_solution.is_valid(&p.challenge) {
                                 tracing::error!(target: "server_log", "SOLUTION IS NOT VALID ANYMORE!");
