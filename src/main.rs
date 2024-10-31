@@ -84,7 +84,7 @@ const MIN_HASHPOWER: u64 = 5;
 const NONCE_RANGE: u64 = 400_000;
 const BUFFER_CLIENT: u64 = 8;
 const BUFFER_SERVER: u64 = 5;
-const COMMISSIONS_RATE: u64 = 100;
+const COMMISSIONS_RATE: u64 = 5;
 
 const ORE_BOOST_MINT: &str = "oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp";
 const ORE_SOL_BOOST_MINT: &str = "DrSS5RM7zUd9qjUEdDaf31vnDUSbCrMto6mjqTrHFifN";
