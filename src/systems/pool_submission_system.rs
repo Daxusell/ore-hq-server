@@ -36,7 +36,7 @@ use tracing::info;
 
 use crate::{app_database::AppDatabase, ore_utils::{
     get_auth_ix, get_cutoff, get_mine_ix_with_boosts, get_proof, get_proof_and_config_with_busses, get_reset_ix, MineEventWithBoosts, ORE_TOKEN_DECIMALS
-}, Config, EpochHashes, InsertChallenge, InsertEarning, InsertTxn, MessageInternalAllClients, MessageInternalMineSuccess, SubmissionWindow, UpdateReward, WalletExtension, BUFFER_SERVER};
+}, Config, EpochHashes, InsertChallenge, InsertEarning, InsertTxn, MessageInternalAllClients, MessageInternalMineSuccess, SubmissionWindow, UpdateReward, WalletExtension, BUFFER_SERVER, COMMISSIONS_RATE};
 
 
 
@@ -624,7 +624,7 @@ pub async fn pool_submission_system(
                                                             info!(target: "server_log", "For Challenge: {:?}", BASE64_STANDARD.encode(old_proof.challenge));
                                                             info!(target: "submission_log", "For Challenge: {:?}", BASE64_STANDARD.encode(old_proof.challenge));
                                                             let full_rewards = mine_event.reward;
-                                                            let commissions = (full_rewards as u128).saturating_mul(5).saturating_div(100) as u64;
+                                                            let commissions = (full_rewards as u128).saturating_mul(COMMISSIONS_RATE).saturating_div(100) as u64;
 
                                                             // handle sending mine success message
                                                             let mut total_hashpower: u64 = 0;
@@ -774,7 +774,7 @@ pub async fn pool_submission_system(
                                                                 info!(target: "server_log", "For Challenge: {:?}", BASE64_STANDARD.encode(old_proof.challenge));
                                                                 info!(target: "submission_log", "For Challenge: {:?}", BASE64_STANDARD.encode(old_proof.challenge));
                                                                 let full_rewards = mine_event.reward;
-                                                                let commissions = full_rewards.mul(5).saturating_div(100);
+                                                                let commissions = full_rewards.mul(COMMISSIONS_RATE).saturating_div(100);
 
                                                                 // handle sending mine success message
                                                                 let mut total_hashpower: u64 = 0;
