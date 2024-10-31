@@ -624,7 +624,7 @@ pub async fn pool_submission_system(
                                                             info!(target: "server_log", "For Challenge: {:?}", BASE64_STANDARD.encode(old_proof.challenge));
                                                             info!(target: "submission_log", "For Challenge: {:?}", BASE64_STANDARD.encode(old_proof.challenge));
                                                             let full_rewards = mine_event.reward;
-                                                            let commissions = (full_rewards as u128).saturating_mul(COMMISSIONS_RATE).saturating_div(100) as u64;
+                                                            let commissions = (full_rewards as u128).saturating_mul(COMMISSIONS_RATE as u128).saturating_div(100) as u64;
 
                                                             // handle sending mine success message
                                                             let mut total_hashpower: u64 = 0;
